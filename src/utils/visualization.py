@@ -1,48 +1,69 @@
 # encoding:utf-8
+"""
+可视化工具模块
+提供图像绘制、显示和处理的工具函数
+"""
 import cv2
 from PyQt5.QtGui import QPixmap, QImage
 import numpy as np
-from PIL import Image,ImageDraw,ImageFont
-import csv
+from PIL import Image, ImageDraw, ImageFont
 import os
-
-# fontC = ImageFont.truetype("Font/platech.ttf", 20, 0)
-
-# 绘图展示
-def cv_show(name,img):
-	cv2.imshow(name, img)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
+from src.config import settings
 
 
-def drawRectBox(image, rect, addText, fontC, color=(0,0,255)):
+def cv_show(name, img):
     """
-    绘制矩形框与结果
+    显示图像并等待按键
+    :param name: 窗口名称
+    :param img: 图像数组
+    """
+    cv2.imshow(name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+def drawRectBox(image, rect, addText, fontC, color=(0, 0, 255)):
+    """
+    绘制矩形框与文字标签
     :param image: 原始图像
-    :param rect: 矩形框坐标, int类型
-    :param addText: 类别名称
-    :param fontC: 字体
-    :return:
+    :param rect: 矩形框坐标 [x1, y1, x2, y2]
+    :param addText: 要显示的文字
+    :param fontC: 字体对象
+    :param color: 边框颜色 (B, G, R)
+    :return: 绘制后的图像
     """
-    # 绘制位置方框
-    cv2.rectangle(image, (rect[0], rect[1]),
-                 (rect[2], rect[3]),
-                 color, 2)
+    # 绘制矩形框
+    cv2.rectangle(image, (rect[0], rect[1]), (rect[2], rect[3]), color, 2)
 
-    # 绘制字体背景框
-    # cv2.rectangle(image, (rect[0] - 1, rect[1] - 50), (rect[2], rect[1]), color, -1, cv2.LINE_AA)
-    # 图片 添加的文字 位置 字体 字体大小 字体颜色 字体粗细.无法正常显示中文
-    # cv2.putText(image, addText, (int(rect[0])+2, int(rect[1])-3), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    # 使用PIL绘制中文文字
+    font_size = int((rect[3] - rect[1]) / 1.5)
+    font_size = max(20, min(font_size, 100))  # 限制字体大小范围
 
-    # 可以显示中文
-    # 字体自适应大小
-    font_size = int((rect[3]-rect[1])/1.5)
-    fontC = ImageFont.truetype("Font/platech.ttf", font_size, 0)
+    try:
+        fontC = ImageFont.truetype(settings.FONT_PATH, font_size, 0)
+    except:
+        # 如果字体加载失败，使用默认字体
+        fontC = ImageFont.load_default()
+
     img = Image.fromarray(image)
     draw = ImageDraw.Draw(img)
-    draw.text((rect[0]+2, rect[1]-font_size), addText, (0, 0, 255), font=fontC)
-    imagex = np.array(img)
-    return imagex
+
+    # 绘制文字背景
+    text_bbox = draw.textbbox((0, 0), addText, font=fontC)
+    text_width = text_bbox[2] - text_bbox[0]
+    text_height = text_bbox[3] - text_bbox[1]
+
+    bg_x1 = rect[0]
+    bg_y1 = rect[1] - text_height - 10
+    bg_x2 = rect[0] + text_width + 10
+    bg_y2 = rect[1]
+
+    draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2], fill=(0, 0, 255))
+
+    # 绘制文字
+    draw.text((rect[0] + 5, rect[1] - text_height - 5), addText, (255, 255, 255), font=fontC)
+
+    return np.array(img)
 
 
 def img_cvread(path):
